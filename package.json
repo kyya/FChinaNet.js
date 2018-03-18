@@ -1,0 +1,7 @@
+{
+  "name": "fchinanet",
+  "version": "0.0.1",
+  "dependencies": {
+    "superagent": "^3.8.2"
+  }
+}
