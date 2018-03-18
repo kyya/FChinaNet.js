@@ -37,17 +37,26 @@ function checkEncry() {
   return true
 }
 
-function checkNet() {
-  http.get("http://pre.f-young.cn/", res=>{
-    const { statusCode } = res
-    if (statusCode == 200)
-      console.log("[*] 检测到已接入校园网.")
-    else
-      throw new Error("[!] 未连接校园网!")
-      //console.error("[!] 未连接校园网!")
+/**
+ * 判断当前是否连接校园网
+ * @return bool
+ */
+async function checkNet() {
+  return await http
+    .get("http://pre.f-young.cn/", res=>{
+      const { statusCode } = res
+      if (statusCode == 200) {
+        console.log("[*] 检测到已接入校园网.")
+        return Promise.resolve(true)
+      }
+      return Promise.resolve(false)
   })
 }
 
+/**
+ * 初始化用户IP
+ * @return void
+ */
 function initial() {
   request
     .get("http://test.f-young.cn")
@@ -73,6 +82,7 @@ function initial() {
 
 /**
  * 校园网登录核心部分
+ * @return bool
  */
 function loginChinaNet() {
   let account = new Buffer(user.account, 'base64').toString()
@@ -101,26 +111,27 @@ function loginChinaNet() {
     })
 }
 
-function checkLogin() {
+async function checkLogin() {
   //解密用户名密码
   let account = new Buffer(user.account, 'base64').toString()
   let passwd = new Buffer(user.passwd, 'base64').toString()
 
-  request
+  return await request
     .get(`https://wifi.loocha.cn/${user.id}/wifi/status`)
     .auth(account, passwd) //TODO: 判断是否Unauthorized
     .then(response => {
       const res = JSON.parse(JSON.stringify(response.body, null, 2))
       let len = res.wifiOnlines.onlines.length
+      console.log(`[*] 当前在线设备${len}个.`)
       for ({ wanIp } of res.wifiOnlines.onlines) {
         // 判断是否登录
-        if (wanIp == user.lastIp) {}
+        if (wanIp == user.lastIp) {
+          return Promise.resolve(true)
+        }
         // 保存上次登录ip
       }
-      if (len == 3) {
-        console.log("[*] 当前在线设备已满.")
-      }
-      console.log(`[*] 当前在线设备${len}个.`)
+      return Promise.resolve(false)
+      
     })
 }
 
@@ -132,6 +143,7 @@ function checkLogin() {
 function kickOffDevice(ip, brasIp) {
 
 }
+
 /**
  * 获取上网所需的动态密码
  * @return String
@@ -155,6 +167,10 @@ async function getPasswd() {
     })
 }
 
+/**
+ * 获取上线所需要的QRCode代码
+ * @return String
+ */
 async function getQrCode() {
   let wanIp = user.wanIp
   let brasIp = user.BrasIp
@@ -169,11 +185,13 @@ async function getQrCode() {
 }
 
 /**
- * 模拟登录天翼PC端客户端
+ * 上线操作
+ * @return void
  */
 async function online() {
   //const user = require('./user.json')
   // 初始化
+  console.log("[*] 开始初始化一些参数...")
   initial()
   // 写入JSON BrasIp
   // if (user.wanIp == "" || user.brasIp == "") 
@@ -193,7 +211,7 @@ async function online() {
   }
 
   let t = GetRandomNum(0, 9)
-  //console.log(t)
+
   let param = `qrcode=${qrcode}&code=${code}&type=${t}`
   let id = user.id
   const account = new Buffer(user.account, 'base64').toString()
