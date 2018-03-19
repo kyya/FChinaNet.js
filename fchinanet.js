@@ -223,13 +223,22 @@ async function online() {
     .then(response=>{
       //const { statusCode } = response
       const res = JSON.parse(JSON.stringify(response.body))
-      if (res.status== "993") {
-        // 断网啦
-        console.log(`[*] 服务器回应：${res.response}(断网啦...)`)
+      console.log(res)
+      if (res.status == "0") {
+        console.log(`[*] 服务器回应：${res.response} (登录成功...)`)
       }
+      else if (res.status == "993") {
+        // 断网啦
+        console.log(`[*] 服务器回应：${res.response} (断网啦...)`)
+      }
+      
       
     })
 }
 
+
 checkEncry()
-loginChinaNet()
+
+checkLogin()
+
+//loginChinaNet()
