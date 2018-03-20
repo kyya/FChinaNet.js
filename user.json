@@ -2,8 +2,8 @@
   "account": "",
   "passwd": "",
   "id": "",
-  "serverId": "",
+  "server_id": "",
   "status": "",
-  "lastIp": "",
-  "BrasIp": ""
+  "last_ip": "",
+  "bras_ip": ""
 }

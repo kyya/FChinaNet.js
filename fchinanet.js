@@ -70,13 +70,13 @@ function initial() {
         // 已经登录成功的状态 redirects=[]
         if (response.redirects.length > 0) {
           const args = response.redirects[0].split('?')[1].split('&')
-          const wanIp = args[0].split('=')[1]
-          const brasIp = args[1].split('=')[1]
+          const wan_ip = args[0].split('=')[1]
+          const bras_ip = args[1].split('=')[1]
   
-          user.wanIp = wanIp
-          user.BrasIp = brasIp
+          user.wan_ip = wan_ip
+          user.bras_ip = bras_ip
           fs.writeFileSync('./user.json', JSON.stringify(user, null, 2))
-          // console.log('[*] 成功获取wanIp和brasIp并写入文件.')
+          // console.log('[*] 成功获取wan_ip和bras_ip并写入文件.')
         }
       
       }
@@ -97,14 +97,13 @@ function loginChinaNet() {
     .then(response => {
       // console.log(JSON.stringify(response.body, null, 2))
       const res = JSON.parse(JSON.stringify(response.body))
-      const serverId = res.user.did.split("#")[0]
+      const server_id = res.user.did.split("#")[0]
       const id = res.user.id
-      //console.log(serverId, id)
-      // 获取serverId 和Id并保存
-      user.serverId = serverId
+      // 获取server_id 和Id并保存
+      user.server_id = server_id
       user.id = id
       fs.writeFileSync('./user.json', JSON.stringify(user, null, 2))
-      // console.log('[*] 成功获取serverId和id并写入文件.')
+      // console.log('[*] 成功获取server_id和id并写入文件.')
 
       // 检测是否登录成功
       checkLogin()
@@ -113,7 +112,10 @@ function loginChinaNet() {
       online()
     })
 }
-
+/**
+ * 检测当前设备是否已经登录
+ * @return {Bool}
+ */
 async function checkLogin() {
   //解密用户名密码
   let account = new Buffer(user.account, 'base64').toString()
@@ -126,9 +128,9 @@ async function checkLogin() {
       const res = JSON.parse(JSON.stringify(response.body))
       let len = res.wifiOnlines.onlines.length
       console.log(`[*] 当前在线设备${len}个.`)
-      for ({ wanIp } of res.wifiOnlines.onlines) {
+      for ({ wan_ip } of res.wifiOnlines.onlines) {
         // 判断是否登录
-        if (wanIp == user.lastIp) {
+        if (wan_ip == user.last_ip) {
           return Promise.resolve(true)
         }
         // 保存上次登录ip
@@ -140,19 +142,17 @@ async function checkLogin() {
 
 /**
  * 对应选项2 下线
- * @param {String} ip 配置文件里的参数
- * @param {String} brasIp 配置文件里的参数
  * @return {Bool} 返回操作结果
  */
-async function kickOffDevice(ip, brasIp) {
+async function kickOffDevice() {
   console.log("[*] 正在下线设备中...")
   let account = new Buffer(user.account, 'base64').toString()
   let passwd = new Buffer(user.passwd, 'base64').toString()
   const id = user.id
-  const wanIp = user.wanIp
-  const brasIp = user.BrasIp
+  const wan_ip = user.wan_ip
+  const bras_ip = user.bras_ip
   return await request
-    .del(`https://wifi.loocha.cn/${id}/wifi/kickoff?wanip=${wanIp}&brasip=${brasIp}`)
+    .del(`https://wifi.loocha.cn/${id}/wifi/kickoff?wanip=${wan_ip}&brasip=${bras_ip}`)
     .auth(account, passwd)
     .then(response=>{
       const { statusCode } = response
@@ -170,13 +170,13 @@ async function kickOffDevice(ip, brasIp) {
  */
 async function getPasswd() {
   const id = user.id
-  const serverId = user.serverId
+  const server_id = user.server_id
 
   const account = new Buffer(user.account, 'base64').toString()
   const passwd = new Buffer(user.passwd, 'base64').toString()
 
   return await request
-    .get(`https://wifi.loocha.cn/${id}/wifi?server_did=${serverId}`)
+    .get(`https://wifi.loocha.cn/${id}/wifi?server_did=${server_id}`)
     .auth(account, passwd) //TODO: 判断是否Unauthorized
     .then(response => {
       const res = JSON.parse(JSON.stringify(response.body))
@@ -192,10 +192,10 @@ async function getPasswd() {
  * @return String
  */
 async function getQrCode() {
-  let wanIp = user.wanIp
-  let brasIp = user.BrasIp
+  let wan_ip = user.wan_ip
+  let bras_ip = user.bras_ip
   return await request
-    .get(`https://wifi.loocha.cn/0/wifi/qrcode?brasip=${brasIp}&ulanip=${wanIp}&wlanip=${wanIp}`)
+    .get(`https://wifi.loocha.cn/0/wifi/qrcode?brasip=${bras_ip}&ulanip=${wan_ip}&wlanip=${wan_ip}`)
     .then(response=>{
       // console.log(response)
       const res = JSON.parse(JSON.stringify(response.body))
