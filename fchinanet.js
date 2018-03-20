@@ -17,13 +17,17 @@ function login() {
  */
 function checkEncry() {
   let { account, passwd } = user
-  if (account == "" || passwd == "") 
+  if (account == "" || passwd == "") {
+    console.error("[*] 请在user.json中填入account和passwd!")
     return false
+  }
+    
 
   // 解密用户名密码
+  // 判断是否为base64字符串
   if (account.slice(-1) == "=") {
-    account = new Buffer(account, 'base64').toString()
-    passwd = new Buffer(passwd, 'base64').toString()
+    // account = new Buffer(account, 'base64').toString()
+    // passwd = new Buffer(passwd, 'base64').toString()
   } 
   // 加密用户名密码并写入JSON
   else {
@@ -62,7 +66,6 @@ function initial() {
     .get("http://test.f-young.cn")
     .then(response=>{
       const { statusCode } = response
-      // console.log(statusCode)
       if (statusCode == 200) {
         // 已经登录成功的状态 redirects=[]
         if (response.redirects.length > 0) {
@@ -120,7 +123,7 @@ async function checkLogin() {
     .get(`https://wifi.loocha.cn/${user.id}/wifi/status`)
     .auth(account, passwd) //TODO: 判断是否Unauthorized
     .then(response => {
-      const res = JSON.parse(JSON.stringify(response.body, null, 2))
+      const res = JSON.parse(JSON.stringify(response.body))
       let len = res.wifiOnlines.onlines.length
       console.log(`[*] 当前在线设备${len}个.`)
       for ({ wanIp } of res.wifiOnlines.onlines) {
@@ -202,7 +205,7 @@ async function online() {
   console.log(`[*] => 本次登录密码[${code}].`)
 
   let qrcode = await getQrCode()
-  console.log(`[*] =>本次QRCode[${qrcode}].`)
+  console.log(`[*] => 本次QRCode[${qrcode}].`)
 
   let GetRandomNum = function (min, max) {
     let range = max - min  
@@ -210,7 +213,7 @@ async function online() {
     return (min + Math.round(rand * range))
   }
 
-  let t = GetRandomNum(0, 9)
+  let t = 1
 
   let param = `qrcode=${qrcode}&code=${code}&type=${t}`
   let id = user.id
@@ -226,6 +229,7 @@ async function online() {
       console.log(res)
       if (res.status == "0") {
         console.log(`[*] 服务器回应：${res.response} (登录成功...)`)
+        console.log(`[*] 本次幸运数字[${t}]`)
       }
       else if (res.status == "993") {
         // 断网啦
@@ -239,6 +243,4 @@ async function online() {
 
 checkEncry()
 
-checkLogin()
-
-//loginChinaNet()
+loginChinaNet()
