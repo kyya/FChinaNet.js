@@ -142,9 +142,26 @@ async function checkLogin() {
  * 对应选项2 下线
  * @param {String} ip 配置文件里的参数
  * @param {String} brasIp 配置文件里的参数
+ * @return {Bool} 返回操作结果
  */
-function kickOffDevice(ip, brasIp) {
-
+async function kickOffDevice(ip, brasIp) {
+  console.log("[*] 正在下线设备中...")
+  let account = new Buffer(user.account, 'base64').toString()
+  let passwd = new Buffer(user.passwd, 'base64').toString()
+  const id = user.id
+  const wanIp = user.wanIp
+  const brasIp = user.BrasIp
+  return await request
+    .del(`https://wifi.loocha.cn/${id}/wifi/kickoff?wanip=${wanIp}&brasip=${brasIp}`)
+    .auth(account, passwd)
+    .then(response=>{
+      const { statusCode } = response
+      if (statusCode == 200) {
+        console.log("[*] 下线成功...")
+        return Promise.resolve(true)
+      }
+      return Promise.resolve(false)
+    })
 }
 
 /**
@@ -192,31 +209,21 @@ async function getQrCode() {
  * @return void
  */
 async function online() {
-  //const user = require('./user.json')
-  // 初始化
+
   console.log("[*] 开始初始化一些参数...")
+
   initial()
-  // 写入JSON BrasIp
-  // if (user.wanIp == "" || user.brasIp == "") 
-  //   throw new Error("[*] 用户wanIP或brasIP为空值.")
+
   console.log("[*] 开始登录天翼客户端...")
 
-  let code = await getPasswd()
+  const code = await getPasswd()
   console.log(`[*] => 本次登录密码[${code}].`)
 
-  let qrcode = await getQrCode()
+  const qrcode = await getQrCode()
   console.log(`[*] => 本次QRCode[${qrcode}].`)
 
-  let GetRandomNum = function (min, max) {
-    let range = max - min  
-    let rand = Math.random()
-    return (min + Math.round(rand * range))
-  }
-
-  let t = 1
-
-  let param = `qrcode=${qrcode}&code=${code}&type=${t}`
-  let id = user.id
+  const param = `qrcode=${qrcode}&code=${code}&type=1`
+  const id = user.id
   const account = new Buffer(user.account, 'base64').toString()
   const passwd = new Buffer(user.passwd, 'base64').toString()
 
@@ -235,8 +242,6 @@ async function online() {
         // 断网啦
         console.log(`[*] 服务器回应：${res.response} (断网啦...)`)
       }
-      
-      
     })
 }
 
