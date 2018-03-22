@@ -1,8 +1,10 @@
+#! /usr/bin/node
+
 const user = require('./user.json')
 const fs = require('fs')
 const http = require('http')
 const request = require('superagent')
-
+const colors = require('colors')
 /**
  * 对应选项1 登录
  */
@@ -87,7 +89,7 @@ function initial() {
  * 校园网登录核心部分
  * @return bool
  */
-function loginChinaNet() {
+async function loginChinaNet() {
   let account = new Buffer(user.account, 'base64').toString()
   let passwd = new Buffer(user.passwd, 'base64').toString()
   // 获取json文件
@@ -103,40 +105,41 @@ function loginChinaNet() {
       user.server_id = server_id
       user.id = id
       fs.writeFileSync('./user.json', JSON.stringify(user, null, 2))
-      // console.log('[*] 成功获取server_id和id并写入文件.')
 
-      // 检测是否登录成功
-      checkLogin()
-
+      
       // 若设备没有登录，执行登录操作
-      online()
+      online().then(
+        res=>console.log(res),
+        err=>console.log(err)
+      )
+      //checkLogin()
+
     })
 }
 /**
  * 检测当前设备是否已经登录
- * @return {Bool}
+ * @return void
  */
-async function checkLogin() {
+function checkLogin() {
   //解密用户名密码
   let account = new Buffer(user.account, 'base64').toString()
   let passwd = new Buffer(user.passwd, 'base64').toString()
 
-  return await request
+  request
     .get(`https://wifi.loocha.cn/${user.id}/wifi/status`)
-    .auth(account, passwd) //TODO: 判断是否Unauthorized
+    .auth(account, passwd)
     .then(response => {
       const res = JSON.parse(JSON.stringify(response.body))
       let len = res.wifiOnlines.onlines.length
       console.log(`[*] 当前在线设备${len}个.`)
-      for ({ wan_ip } of res.wifiOnlines.onlines) {
-        // 判断是否登录
+      // console.log(res.wifiOnlines.onlines)
+      for ({ wanIp:wan_ip } of res.wifiOnlines.onlines) {
         if (wan_ip == user.last_ip) {
-          return Promise.resolve(true)
+          console.log("[*] 当前设备在线...")
+          return
         }
-        // 保存上次登录ip
       }
-      return Promise.resolve(false)
-      
+      console.log("[!] 当前设备不在线...")
     })
 }
 
@@ -144,23 +147,24 @@ async function checkLogin() {
  * 对应选项2 下线
  * @return {Bool} 返回操作结果
  */
-async function kickOffDevice() {
+function kickOffDevice() {
   console.log("[*] 正在下线设备中...")
   let account = new Buffer(user.account, 'base64').toString()
   let passwd = new Buffer(user.passwd, 'base64').toString()
   const id = user.id
   const wan_ip = user.wan_ip
   const bras_ip = user.bras_ip
-  return await request
+
+  request
     .del(`https://wifi.loocha.cn/${id}/wifi/kickoff?wanip=${wan_ip}&brasip=${bras_ip}`)
     .auth(account, passwd)
     .then(response=>{
       const { statusCode } = response
       if (statusCode == 200) {
         console.log("[*] 下线成功...")
-        return Promise.resolve(true)
+      } else {
+        console.log(colors.red("[!] 下线失败..."))
       }
-      return Promise.resolve(false)
     })
 }
 
@@ -168,40 +172,46 @@ async function kickOffDevice() {
  * 获取上网所需的动态密码
  * @return String
  */
-async function getPasswd() {
+function getPasswd() {
   const id = user.id
   const server_id = user.server_id
 
   const account = new Buffer(user.account, 'base64').toString()
   const passwd = new Buffer(user.passwd, 'base64').toString()
 
-  return await request
-    .get(`https://wifi.loocha.cn/${id}/wifi?server_did=${server_id}`)
-    .auth(account, passwd) //TODO: 判断是否Unauthorized
-    .then(response => {
-      const res = JSON.parse(JSON.stringify(response.body))
-      const code = res.telecomWifiRes.password
-      // TODO: 检验code长度是否为6位
-      // console.log(`[*] 本次登录密码[${code}].`)
-      return Promise.resolve(code)
-    })
+  return new Promise(resolve=>{
+    request
+      .get(`https://wifi.loocha.cn/${id}/wifi?server_did=${server_id}`)
+      .auth(account, passwd) //TODO: 判断是否Unauthorized
+      .then(response => {
+        const res = JSON.parse(JSON.stringify(response.body))
+        const code = res.telecomWifiRes.password
+        // TODO: 检验code长度是否为6位
+        resolve(code)
+      })
+  })
+
 }
 
 /**
  * 获取上线所需要的QRCode代码
  * @return String
  */
-async function getQrCode() {
+function getQrCode() {
   let wan_ip = user.wan_ip
   let bras_ip = user.bras_ip
-  return await request
-    .get(`https://wifi.loocha.cn/0/wifi/qrcode?brasip=${bras_ip}&ulanip=${wan_ip}&wlanip=${wan_ip}`)
-    .then(response=>{
-      // console.log(response)
-      const res = JSON.parse(JSON.stringify(response.body))
-      // console.log(res)
-      return Promise.resolve(res.telecomWifiRes.password)
-    })
+  return new Promise(resolve=>{
+    request
+      .get(`https://wifi.loocha.cn/0/wifi/qrcode?brasip=${bras_ip}&ulanip=${wan_ip}&wlanip=${wan_ip}`)
+      .then(response=>{
+        // console.log(response)
+        const res = JSON.parse(JSON.stringify(response.body))
+        // console.log(res)
+        resolve(res.telecomWifiRes.password)
+      })
+      //.catch(err=>reject(err))
+  })
+  
 }
 
 /**
@@ -227,25 +237,30 @@ async function online() {
   const account = new Buffer(user.account, 'base64').toString()
   const passwd = new Buffer(user.passwd, 'base64').toString()
 
-  request
-    .post(`https://wifi.loocha.cn/${id}/wifi/enable?${param}`)
-    .auth(account, passwd) //TODO: 判断是否Unauthorized
-    .then(response=>{
-      //const { statusCode } = response
-      const res = JSON.parse(JSON.stringify(response.body))
-      console.log(res)
-      if (res.status == "0") {
-        console.log(`[*] 服务器回应：${res.response} (登录成功...)`)
-        console.log(`[*] 本次幸运数字[${t}]`)
-      }
-      else if (res.status == "993") {
-        // 断网啦
-        console.log(`[*] 服务器回应：${res.response} (断网啦...)`)
-      }
-    })
+  return new Promise((resolve, reject)=>{
+    request
+      .post(`https://wifi.loocha.cn/${id}/wifi/enable?${param}`)
+      .auth(account, passwd) //TODO: 判断是否Unauthorized
+      .then(response=>{
+        //const { statusCode } = response
+        const res = JSON.parse(JSON.stringify(response.body))
+        //console.log(res)
+        if (res.status == "0") {
+          resolve(`[*] 服务器回应：${res.response} [登录成功...]`)
+        }
+        else if (res.status == "993") {
+          // 断网啦
+          reject(colors.red(`[!] ${res.response}`))
+        }
+      })
+  })
+ 
 }
 
 
-checkEncry()
+//checkEncry()
 
 loginChinaNet()
+
+//kickOffDevice()
+checkLogin()
