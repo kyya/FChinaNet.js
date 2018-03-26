@@ -1,11 +1,10 @@
 {
   "name": "fchinanet",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "scripts": {
-    "start": "node ./fchinanet.js"
+    "start": "node ./FChinaNet.js"
   },
   "dependencies": {
-    "colors": "^1.2.1",
-    "superagent": "^3.8.2"
+    "node-fetch": "^2.1.2"
   }
 }
