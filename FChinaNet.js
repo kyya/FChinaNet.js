@@ -103,12 +103,15 @@ async function kickOffDevice() {
 async function getPasswd() {
   const headers = { Authorization: `Basic ${config.auth}` }
   const id = config.id
-  const server_id = config.server_id
-  return await fetch(`https://wifi.loocha.cn/${id}/wifi?server_did=${server_id}`, {headers})
+  return await fetch(`https://wifi.loocha.cn/${id}/wifi/telecom/pwd?type=4`, {headers})
     .then(res => res.json())
-    .then(json => json.telecomWifiRes.password)
+    .then(json => {
+      console.log(json)
+      if (json.status == '0') {
+        return json.telecomWifiRes.password
+      }
+    })
 }
-
 /**
  * 获取上线所需要的QRCode代码
  * @return {String}
@@ -120,7 +123,6 @@ async function getQrCode() {
   return await fetch(`https://wifi.loocha.cn/0/wifi/qrcode?brasip=${bras_ip}&ulanip=${wan_ip}&wlanip=${wan_ip}`)
     .then(res => res.json())
     .then(json => {
-      // status=60011 当前设备在线
       if (json.status == "0")
         return json.telecomWifiRes.password
     })
@@ -135,11 +137,9 @@ async function initial() {
     .then(res=>res.headers.get('Location'))
     .then(url=>{
       if (url!=undefined) {
-        // console.log(url)
         const args = url.split('?')[1].split('&')
         const wan_ip = args[0].split('=')[1]
         const bras_ip = args[1].split('=')[1]
-  
         config.wan_ip = wan_ip
         config.bras_ip = bras_ip
       }
@@ -152,37 +152,28 @@ async function initial() {
  */
 async function doOnline() {
   const headers = { Authorization: `Basic ${config.auth}` }
-
+  const id = config.id
   const code = await getPasswd()
   console.log(`[*] => 本次登录密码[${code}].`)
-
   const qrcode = await getQrCode()
-  // if (qrcode==undefined) 
-  //   throw new Error("[!] 未获取到QRCode...")
   console.log(`[*] => 本次QRCode[${qrcode}].`)
-
-  
   const param = `qrcode=${qrcode}&code=${code}&type=1`
 
-  return await fetch(`https://wifi.loocha.cn/${config.id}/wifi/enable?${param}`, {
+  return await fetch(`https://wifi.loocha.cn/${id}/wifi/telecom/auto/login?${param}`, {
       method: "POST",
       headers
     })
     .then(res=>res.json())
     .then(json=>{
       if (json.status == "0") {
-        console.log(`[*] 服务器回应：${json.response}`, '[登录成功...]')
+        console.log(`[*] 登录成功.`)
       }
-      else if (json.status == "60006") {
-        // 当qrcode==undefined时的返回码
-        console.log("[!] 当前设备已登录.")
-      }
-      else {
-        console.log(json)
+      else if (json.status == "993") {
+        // 账户已登录
+        console.log("[!] 检测到你的帐号在其他设备登录.")
       }
     })
 }
-
 
 (async function() {
 
@@ -201,7 +192,7 @@ await loginChinaNet().catch(err=>console.log(err))
 await checkLogin().catch(err=>console.log(err))
 
 // 可选项：下线当前设备
-//await kickOffDevice()
+// await kickOffDevice()
 
 // 第四步：保存当前配置文件
 await saveConfig()

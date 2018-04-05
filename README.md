@@ -26,4 +26,5 @@ FChinaNet具有以下特性
 > 有空再写
 
 ## 参考项目
-+ [Go语言版fchinanet](https://github.com/01Sr/fchinanetgit)
+
++ 接口来自于：[Go语言版fchinanet](https://github.com/01Sr/fchinanetgit)
