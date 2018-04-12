@@ -2,24 +2,6 @@ const fs = require('fs')
 const fetch = require('node-fetch')
 
 /**
- * 校园网登录核心部分
- * @return bool
- */
-async function loginChinaNet() {
-  const headers = { Authorization: `Basic ${config.auth}` }
-  return await fetch("https://www.loocha.com.cn:8443/login", {headers})
-    .then(res=>res.json())
-    .then(async json => {
-      // console.log(json)
-      const server_id = json.user.did.split("#")[0]
-      const id = json.user.id
-      // 获取server_id 和Id并保存
-      config.server_id = server_id
-      config.id = id
-      return await doOnline()
-    })
-}
-/**
  * 验证账户密码的合法性
  * @return void
  */
@@ -30,7 +12,7 @@ async function doFirstVerify() {
   if(config.auth == undefined) {
     let AUTH = new Buffer(`${config.account}:${config.passwd}`).toString('base64')
     let headers = { "Authorization": `Basic ${AUTH}` }
-    return await fetch('https://www.loocha.com.cn:8443/login', { headers })
+    return await fetch('https://www.loocha.com.cn:8443/login?1=Android_college_100.100.100', { headers })
       .then(res=>{
         if (!res.ok) {
           throw new Error("[!] 账户或密码出错...")
@@ -84,7 +66,7 @@ async function kickOffDevice() {
 
   console.log("[*] 正在下线设备中...")
   
-  return await fetch(`https://wifi.loocha.cn/${id}/wifi/kickoff?wanip=${wan_ip}&brasip=${bras_ip}`, {
+  return await fetch(`https://wifi.loocha.cn/${id}/wifi/kickoff?1=Android_college_100.100.100&wanip=${wan_ip}&brasip=${bras_ip}`, {
     method: "DELETE",
     headers
   }).then(res=>{
@@ -103,7 +85,7 @@ async function kickOffDevice() {
 async function getPasswd() {
   const headers = { Authorization: `Basic ${config.auth}` }
   const id = config.id
-  return await fetch(`https://wifi.loocha.cn/${id}/wifi/telecom/pwd?type=4`, {headers})
+  return await fetch(`https://wifi.loocha.cn/${id}/wifi/telecom/pwd?type=4&1=Android_college_100.100.100`, {headers})
     .then(res => res.json())
     .then(json => {
       console.log(json)
@@ -120,7 +102,7 @@ async function getQrCode() {
   await initial()
   let wan_ip = config.wan_ip
   let bras_ip = config.bras_ip
-  return await fetch(`https://wifi.loocha.cn/0/wifi/qrcode?brasip=${bras_ip}&ulanip=${wan_ip}&wlanip=${wan_ip}`)
+  return await fetch(`https://wifi.loocha.cn/0/wifi/qrcode?1=Android_college_100.100.100&brasip=${bras_ip}&ulanip=${wan_ip}&wlanip=${wan_ip}&mm=default`)
     .then(res => res.json())
     .then(json => {
       if (json.status == "0")
@@ -147,7 +129,7 @@ async function initial() {
 }
 
 /**
- * 上线操作
+ * 校园网登录核心部分
  * @return {Promise}
  */
 async function doOnline() {
@@ -157,7 +139,7 @@ async function doOnline() {
   console.log(`[*] => 本次登录密码[${code}].`)
   const qrcode = await getQrCode()
   console.log(`[*] => 本次QRCode[${qrcode}].`)
-  const param = `qrcode=${qrcode}&code=${code}&type=1`
+  const param = `1=Android_college_100.100.100&qrcode=${qrcode}&code=${code}&type=1`
 
   return await fetch(`https://wifi.loocha.cn/${id}/wifi/telecom/auto/login?${param}`, {
       method: "POST",
@@ -165,12 +147,13 @@ async function doOnline() {
     })
     .then(res=>res.json())
     .then(json=>{
+      console.log(json)
       if (json.status == "0") {
         console.log(`[*] 登录成功.`)
       }
       else if (json.status == "993") {
         // 账户已登录
-        console.log("[!] 检测到你的帐号在其他设备登录.")
+        console.log(`[!] ${json.response}.`)
       }
     })
 }
@@ -186,7 +169,7 @@ if (!fs.existsSync('./config.json')) {
 await doFirstVerify().catch(err=>console.log(err))
 
 // 第二步：登录
-await loginChinaNet().catch(err=>console.log(err))
+await doOnline().catch(err=>console.log(err))
 
 // 第三步：输出当前在线的设备数量
 await checkLogin().catch(err=>console.log(err))
