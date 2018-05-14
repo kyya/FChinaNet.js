@@ -1,10 +1,4 @@
 {
   "account": "<填入掌上大学用户名>",
-  "passwd": "<填入掌上大学密码>",
-  "id": "",
-  "server_id": "",
-  "status": "",
-  "last_ip": "",
-  "bras_ip": "",
-  "wan_ip": ""
+  "passwd": "<填入掌上大学密码>"
 }
